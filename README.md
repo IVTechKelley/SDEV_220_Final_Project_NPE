@@ -7,6 +7,8 @@ This is the final project for the SDEV 220 course, aiming to create a shopping p
 ### Technologies Used
 
 - Python
+- tkinter
+- Pillow
 
 
 ### Features
