@@ -20,5 +20,6 @@ This is the final project for the SDEV 220 course, aiming to create a shopping p
 
 ### Dependencies
 
-- Python 3.x
+- "Python 3.1.x ('base') Conda"
+    - (For compatibilty of Pillow on ARM Processors - MacOS)
 
