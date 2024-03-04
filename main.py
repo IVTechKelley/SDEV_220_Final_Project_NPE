@@ -1,3 +1,17 @@
+'''
+    Consumer Retail Electronics Shopping Platform
+
+    Authors: Patrick Kelley, Nathaniel Johnson, Evan Kupec
+
+    Description: This program serves as a demonstration for a shopping platform. The user can navigate through 
+                 the shopping, cart, and checkout windows by using appropriately labeled buttons. Products can
+                 be searched and filtered, and they can be added to the user's cart with a button. In the cart
+                 window, users can increase or decrease the quantity of items in their cart before checking out.
+                 The checkout window prompts users to enter necessary details and displays pricing totals. When
+                 finished, the submit button will generate a summary/report of the user's sale.
+'''
+
+
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
@@ -5,6 +19,7 @@ from PIL import Image, ImageTk
 
 class Products:
     def __init__(self):
+        """Initialize the Products class with an empty dictionary to store product information."""
         self.products = {}
 
     def add_product(self, product_id, category, name, price, description, image_path):
@@ -53,6 +68,14 @@ class WindowController:
     DEFAULT_HEIGHT = 450
 
     def __init__(self, root, products, shopping_cart):
+        """
+        Initialize the WindowController class. Controls window navigation, opening and closing.
+
+        Args:
+            root: The root Tkinter window.
+            products (Products): An instance of the Products class containing product information.
+            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
+        """
         self.root = root
         self.products = products
         self.current_window = None
@@ -88,6 +111,15 @@ class WindowController:
 
 class ShoppingWindow(tk.Toplevel):
     def __init__(self, root, controller, products, shopping_cart):
+        """
+        Initialize the ShoppingWindow class.
+
+        Args:
+            root: The root Tkinter window.
+            controller (WindowController): The window controller for handling window navigation.
+            products (Products): An instance of the Products class containing product information.
+            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
+        """
         super().__init__(root)
         self.title("Shopping")
         self.controller = controller
@@ -143,31 +175,45 @@ class ShoppingWindow(tk.Toplevel):
         self.on_search()
 
     def update_list(self, category, search_query=None):
-        self.tree.delete(*self.tree.get_children())
+        """
+        Update the displayed product list based on the selected category and search query.
 
+        Args:
+            category (str): The selected category for filtering products.
+            search_query (str, optional): The search query for filtering products by name. Defaults to None.
+        """
+        self.tree.delete(*self.tree.get_children())
         if category == "All":
             products = list(self.products.products.values())
         else:
             products = self.products.get_products_by_category(category)
-
         if search_query:
             products = [product for product in products if search_query.lower() in product['name'].lower()]
-
         for product in products:
             self.tree.insert("", "end", values=(product['name'], "${:.2f}".format(product['price'])))
 
     def on_search(self, *args):
+        """
+        Handle the search action triggered by the user.
+
+        Args:
+            *args: Additional arguments.
+        """
         selected_category = self.category_var.get()
         search_query = self.entry_search.get()
         self.update_list(selected_category, search_query)
     
     def add_to_cart(self):
+        """
+        Add the selected product to the shopping cart.
+
+        Retrieves the selected product from the list and updates the shopping cart accordingly.
+        """
         selected_item = self.tree.focus()
         if selected_item:
             item_values = self.tree.item(selected_item, "values")
             product_name = item_values[0]
             product_price = float(item_values[1][1:])
-
             if product_name:
                 if product_name not in self.shopping_cart:
                     self.shopping_cart[product_name] = {
@@ -179,6 +225,12 @@ class ShoppingWindow(tk.Toplevel):
                     self.shopping_cart[product_name]['quantity'] += 1
     
     def show_selected_item(self, event):
+        """
+        Display detailed information about the selected product.
+
+        Args:
+            event: The event triggering the action (not used).
+        """
         selected_item = self.tree.focus()
         if selected_item:
             item_values = self.tree.item(selected_item, "values")
@@ -187,31 +239,28 @@ class ShoppingWindow(tk.Toplevel):
             description = product_info['description']
             image_path = product_info['image_path']
             
-            # Load the original image
             original_image = Image.open(image_path)
-            
-            # Calculate the new width while maintaining the aspect ratio
-            original_width, original_height = original_image.size
-            target_height = 150  # Set your desired fixed height
-            ratio = target_height / original_height
-            new_size = (int(original_width * ratio), target_height)
-            
-            # Resize the image
+            original_width = original_image.size[0]
+            new_size = (int(original_width), 150)
             resized_image = original_image.resize(new_size, Image.LANCZOS)
-            
-            # Display the resized image
             photo = ImageTk.PhotoImage(resized_image)
             self.item_image_label.config(image=photo)
             self.item_image_label.image = photo
-            
-            # Configure label size and anchor
-            self.item_image_label.config(width=new_size[0], height=target_height, anchor="n")
-            
+            self.item_image_label.config(width=new_size[0], height=150, anchor="n")
             self.item_description_label.config(text=description)
 
 
 class CartWindow(tk.Toplevel):
     def __init__(self, root, controller, products, shopping_cart):
+        """
+        Initialize the CartWindow class.
+
+        Args:
+            root: The root Tkinter window.
+            controller (WindowController): The window controller for handling window navigation.
+            products (Products): An instance of the Products class containing product information.
+            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
+        """
         super().__init__(root)
         self.title("Shopping Cart")
         self.controller = controller
@@ -232,27 +281,30 @@ class CartWindow(tk.Toplevel):
 
         self.remove_button = tk.Button(button_frame, text="Remove Item", command=self.remove_item)
         self.remove_button.pack(side=tk.LEFT, padx=5)
-
         self.add_button = tk.Button(button_frame, text="Add Item", command=self.add_to_cart)
         self.add_button.pack(side=tk.LEFT, padx=5)
-
         self.checkout_button = tk.Button(button_frame, text="Checkout", command=self.controller.show_checkout_window)
         self.checkout_button.pack(side=tk.RIGHT, padx=5)
-
         self.back_to_shopping_button = tk.Button(button_frame, text="Continue Shopping", command=self.controller.show_shopping_window)
         self.back_to_shopping_button.pack(side=tk.RIGHT, padx=5)
 
         self.update_listbox()
 
     def add_to_cart(self):
+        """
+        Increase the quantity of the selected item in the shopping cart.
+        """
         selected_index = self.cart_listbox.curselection()
         if selected_index:
             product_id = list(self.shopping_cart.keys())[selected_index[0]]
             self.shopping_cart[product_id]['quantity'] += 1
-
         self.update_listbox()
 
     def remove_item(self):
+        """
+        Decrease the quantity of the selected item in the shopping cart.
+        Remove the item if the quantity becomes zero.
+        """
         selected_index = self.cart_listbox.curselection()
         if selected_index:
             product_id = list(self.shopping_cart.keys())[selected_index[0]]
@@ -260,22 +312,32 @@ class CartWindow(tk.Toplevel):
                 self.shopping_cart[product_id]['quantity'] -= 1
             else:
                 del self.shopping_cart[product_id]
-                
         self.update_listbox()
 
     def update_listbox(self):
+        """
+        Update the displayed list of items in the shopping cart.
+        """
         self.cart_listbox.delete(0, tk.END)
         total_price = 0.0
         for product_id, item in self.shopping_cart.items():
             product_info = f"{item['name']} - ${item['price']:.2f} x {item['quantity']}"
             total_price += item['price'] * item['quantity']
             self.cart_listbox.insert(tk.END, product_info)
-        
         self.total_label.config(text=f"Total: ${total_price:.2f}")
 
 
 class CheckoutWindow(tk.Toplevel):
     def __init__(self, root, controller, products, shopping_cart):
+        """
+        Initialize the CheckoutWindow class.
+
+        Args:
+            root: The root Tkinter window.
+            controller (WindowController): The window controller for handling window navigation.
+            products (Products): An instance of the Products class containing product information.
+            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
+        """
         super().__init__(root)
         self.title("Checkout")
         self.controller = controller
@@ -284,7 +346,6 @@ class CheckoutWindow(tk.Toplevel):
 
         self.configure(padx=30)
 
-        # Payment Information Section
         tk.Label(self, text="Payment Information").grid(row=0, column=1, pady=10, sticky=tk.W + tk.E)
         tk.Label(self, text="Cardholder Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
         self.cardholder_name_entry = tk.Entry(self)
@@ -302,7 +363,6 @@ class CheckoutWindow(tk.Toplevel):
         self.cvv_entry = tk.Entry(self)
         self.cvv_entry.grid(row=4, column=1, pady=5)
 
-        # Shipping Information Section
         tk.Label(self, text="Shipping Information").grid(row=5, column=1, pady=10, sticky=tk.W + tk.E)
         tk.Label(self, text="Street Address:").grid(row=6, column=0, sticky=tk.W, pady=5)
         self.address_entry = tk.Entry(self)
@@ -320,7 +380,6 @@ class CheckoutWindow(tk.Toplevel):
         self.zip_code_entry = tk.Entry(self)
         self.zip_code_entry.grid(row=9, column=1, pady=5)
 
-        # Order Summary Section
         self.base_price_label = tk.Label(self, text="Subtotal: $0.00")
         self.base_price_label.grid(row=7, column=2, pady=5, sticky=tk.E)
 
@@ -330,11 +389,8 @@ class CheckoutWindow(tk.Toplevel):
         self.final_price_label = tk.Label(self, text="Total: $0.00")
         self.final_price_label.grid(row=9, column=2, pady=5, sticky=tk.E)
 
-        # Confirm button
         confirm_button = tk.Button(self, text="Place Order", command=self.confirm_checkout)
         confirm_button.grid(row=11, column=1, pady=10)
-
-        # Back buttons
         back_to_shopping_button = tk.Button(self, text="Back to Shopping", command=self.controller.show_shopping_window)
         back_to_shopping_button.grid(row=12, column=0, pady=5, sticky=tk.W)
         back_to_cart_button = tk.Button(self, text="Back to Cart", command=self.controller.show_cart_window)
@@ -347,40 +403,56 @@ class CheckoutWindow(tk.Toplevel):
         self.update_totals()
 
     def update_totals(self):
+        """
+        Update the displayed subtotal, tax, and total amounts based on the items in the shopping cart.
+        """
         base_price = sum(item['price'] * item['quantity'] for item in self.controller.shopping_cart.values())
-
-        # Calculate taxes (Assuming Indiana's sales tax rate of 7%)
         tax_rate = 0.07
         taxes = base_price * tax_rate
         final_price = base_price + taxes
-
         self.base_price_label.config(text=f"Subtotal: ${base_price:.2f}")
         self.taxes_label.config(text=f"Tax: ${taxes:.2f}")
         self.final_price_label.config(text=f"Total: ${final_price:.2f}")
 
     def confirm_checkout(self):
+        """
+        Update the displayed subtotal, tax, and total amounts based on the items in the shopping cart.
+        """
         cardholder_name = self.cardholder_name_entry.get()
-        card_number = self.card_number_entry.get()[-4:]
+        card_number = self.card_number_entry.get()
         expiration_date = self.expiration_date_entry.get()
         cvv = self.cvv_entry.get()
         address = self.address_entry.get()
         city = self.city_entry.get()
         state = self.state_entry.get()
         zip_code = self.zip_code_entry.get()
-
-        receipt_text = f"Payment Information:\n\nCardholder_name: {cardholder_name}\n\nCard Number: {card_number}\n\nExpiration Date: {expiration_date}\n\n\nShipping Information:\n\nStreet Address: {address}\n\nCity: {city}\n\nState: {state}\n\nZip Code: {zip_code}"
+        if any(not field for field in [cardholder_name, card_number, expiration_date, cvv, address, city, state, zip_code]):
+            for entry in [self.cardholder_name_entry, self.card_number_entry, self.expiration_date_entry,
+                        self.cvv_entry, self.address_entry, self.city_entry, self.state_entry, self.zip_code_entry]:
+                if not entry.get():
+                    entry.insert(0, "Field cannot be empty")
+            return
+        
+        receipt_text = f"Payment Information:\n\nCardholder Name: {cardholder_name}\n\nCard Number: {card_number}\n\nExpiration Date: {expiration_date}\n\n\nShipping Information:\n\nStreet Address: {address}\n\nCity: {city}\n\nState: {state}\n\nZip Code: {zip_code}"
         receipt_text += f"\n\nOrder Summary:\n\n{self.base_price_label.cget('text')}\n{self.taxes_label.cget('text')}\n{self.final_price_label.cget('text')}"
+        self.controller.shopping_cart.clear()
         ReceiptWindow(self, self.controller, receipt_text)
 
 
 class ReceiptWindow(tk.Toplevel):
     def __init__(self, root, controller, receipt_text):
+        """
+        Initialize the ReceiptWindow class.
+
+        Args:
+            root: The root Tkinter window.
+            controller (WindowController): The window controller for handling window navigation.
+            receipt_text (str): The text to be displayed in the receipt.
+        """
         super().__init__(root)
         self.title("Receipt")
-        self.controller = controller
-        
+        self.controller = controller 
         self.geometry(f"{controller.DEFAULT_WIDTH}x{controller.DEFAULT_HEIGHT}+{controller.center_x()}+{controller.center_y()}")
-
         tk.Label(self, text=receipt_text, justify=tk.LEFT).pack(padx=20, pady=20)
         ok_button = tk.Button(self, text="OK", command=self.controller.show_shopping_window)
         ok_button.pack(pady=10)
