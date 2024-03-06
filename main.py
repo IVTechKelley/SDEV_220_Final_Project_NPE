@@ -28,7 +28,7 @@ class Products:
         rows = cursor.fetchall()
 
         for row in rows:
-            product_id, category, name, price, description, image_path = row
+            product_id, name, description, price, image_path, category = row
             self.add_product(product_id, category, name, price, description, image_path)
 
         conn.close()
@@ -112,10 +112,12 @@ class ShoppingWindow(tk.Toplevel):
         self.button_search.pack(side=tk.LEFT, padx=5) 
         self.search_frame.pack(pady=10)
 
+        # Get unique categories from the database
+        categories = self.get_unique_categories()
+
         self.category_var = tk.StringVar()
         self.category_var.set("All")
-        categories = ["All", "Consoles", "Laptops", "Appliances"]
-        self.category_menu = tk.OptionMenu(self, self.category_var, "All", "Consoles", "Laptops", "Appliances", command=self.on_search)
+        self.category_menu = tk.OptionMenu(self, self.category_var, *categories, command=self.on_search)
         self.category_menu.pack(pady=10)
 
         self.listbox_frame = tk.Frame(self)
@@ -143,7 +145,7 @@ class ShoppingWindow(tk.Toplevel):
         self.filter_btn = tk.Button(self, text="Filter", command=lambda: self.filter_frame.place(x=self.winfo_width()-100, y=0, anchor=tk.NE))
         self.filter_btn.place(x=self.winfo_width()-100, y=0, anchor=tk.NE)
 
-        for category in categories[1:]:
+        for category in categories:
             filter_category_button = tk.Button(self.filter_frame, text=category, command=lambda cat=category: self.on_search(cat))
             filter_category_button.pack(side=tk.LEFT)
 
@@ -152,13 +154,23 @@ class ShoppingWindow(tk.Toplevel):
 
         self.on_search()
 
+    def get_unique_categories(self):
+        """
+        Retrieve unique categories from the database.
+        """
+        conn = sqlite3.connect("products.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT category FROM products")
+        categories = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        return ["All"] + categories
+
     def update_list(self, category, search_query=None):
         """
         Update the displayed product list based on the selected category and search query.
-
         Args:
-            category (str): The selected category for filtering products.
-            search_query (str, optional): The search query for filtering products by name. Defaults to None.
+        category (str): The selected category for filtering products.
+        search_query (str, optional): The search query for filtering products by name. Defaults to None.
         """
         self.tree.delete(*self.tree.get_children())
         if category == "All":
@@ -202,23 +214,28 @@ class ShoppingWindow(tk.Toplevel):
         Args:
         event: The event triggering the action (not used).
         """
-        selected_item = self.tree.focus()
+        selected_item = self.tree.selection()
         if selected_item:
             item_values = self.tree.item(selected_item, "values")
-            product_name = item_values[0]
+            product_name = item_values[0] if item_values else None
             product_info = self.products.get_product_by_name(product_name)
             description = product_info['description']
             image_path = product_info['image_path']
 
-            original_image = Image.open(image_path)
-            original_width = original_image.size[0]
-            new_size = (int(original_width), 150)
-            resized_image = original_image.resize(new_size, Image.LANCZOS)
-            photo = ImageTk.PhotoImage(resized_image)
-            self.item_image_label.config(image=photo)
-            self.item_image_label.image = photo
-            self.item_image_label.config(width=new_size[0], height=150, anchor="n")
-            self.item_description_label.config(text=description)
+            try:
+                # Assuming 'images/' is the directory where your images are stored
+                original_image = Image.open(image_path)
+                original_width = original_image.size[0]
+                new_size = (int(original_width), 150)
+                resized_image = original_image.resize(new_size, Image.LANCZOS)
+                photo = ImageTk.PhotoImage(resized_image)
+                self.item_image_label.config(image=photo)
+                self.item_image_label.image = photo
+                self.item_image_label.config(width=new_size[0], height=150, anchor="n")
+                self.item_description_label.config(text=description)
+            except FileNotFoundError:
+                print(f"Image file not found: {image_path}")
+                # Handle the missing image file gracefully, e.g., show a default image.
 
 
 class CartWindow(tk.Toplevel):
