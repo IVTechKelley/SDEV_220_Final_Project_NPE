@@ -4,23 +4,34 @@
     Authors: Patrick Kelley, Nathaniel Johnson, Evan Kupec
 
     Description: This program serves as a demonstration for a shopping platform. The user can navigate through 
-                 the shopping, cart, and checkout windows by using appropriately labeled buttons. Products can
-                 be searched and filtered, and they can be added to the user's cart with a button. In the cart
-                 window, users can increase or decrease the quantity of items in their cart before checking out.
-                 The checkout window prompts users to enter necessary details and displays pricing totals. When
-                 finished, the submit button will generate a summary/report of the user's sale.
+                 the shopping cart and checkout windows by using appropriately labeled buttons. Products can
+                 be searched, filtered, and added to the user's cart with a button. In the cart window
+                 users can increase or decrease the quantity of items in their cart before checking out.
+                 The checkout window prompts users to enter necessary details and displays pricing totals.
+                 When finished, the submit button generates a summary report of the user's sale.
 '''
-
 
 import tkinter as tk
 from tkinter import ttk
 from PIL import Image, ImageTk
-
+import sqlite3
 
 class Products:
-    def __init__(self):
-        """Initialize the Products class with an empty dictionary to store product information."""
+    def __init__(self, db_file):
         self.products = {}
+        self.load_products(db_file)
+
+    def load_products(self, db_file):
+        conn = sqlite3.connect(db_file)
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM products")
+        rows = cursor.fetchall()
+
+        for row in rows:
+            product_id, category, name, price, description, image_path = row
+            self.add_product(product_id, category, name, price, description, image_path)
+
+        conn.close()
 
     def add_product(self, product_id, category, name, price, description, image_path):
         self.products[product_id] = {
@@ -33,49 +44,25 @@ class Products:
 
     def get_product_info(self, product_id):
         return self.products.get(product_id)
-    
+
     def get_products_by_category(self, category):
         return [product_info for product_info in self.products.values() if product_info['category'] == category]
-    
+
     def get_product_by_name(self, name):
         for product_id, product_info in self.products.items():
             if product_info['name'] == name:
                 return product_info
         return None
 
-    
 # Product database
-products = Products()
-products.add_product(1, "Consoles", "PlayStation 5", 469.99, "Immerse yourself in cutting-edge graphics and innovative features.", "images/ps5.jpg")
-products.add_product(2, "Consoles", "Xbox Series X", 449.99, "Experience top-notch performance and a vast gaming library.", "images/xbox_series_x.jpg")
-products.add_product(3, "Consoles", "Nintendo Switch", 299.99, "Seamlessly switch between TV and handheld modes for an unparalleled gaming adventure.", "images/nintendo_switch.jpg")
-products.add_product(4, "Consoles", "PlayStation 4 Pro", 349.99, "Immerse yourself in stunning 4K graphics and enhanced gaming features.", "images/ps4_pro.jpg")
-products.add_product(5, "Consoles", "Xbox One S", 279.99, "Enjoy a vast world of entertainment with this stylish gaming console.", "images/xbox_one_s.jpg")
-products.add_product(6, "Laptops", "MacBook", 1299.99, "This sleek and powerful laptop is designed for optimal performance and efficiency.", "images/macbook.jpg")
-products.add_product(7, "Laptops", "Dell XPS", 999.99, "This high-performance laptop combines power and style for seamless productivity.", "images/dell.jpg")
-products.add_product(8, "Laptops", "HP Spectre x360", 1199.99, "This convertible laptop boasts a sleek design and versatile functionality.", "images/hp_spectre.jpg")
-products.add_product(9, "Laptops", "Lenovo ThinkPad", 899.99, "This business-grade laptop offers robust features and reliability.", "images/lenovo_thinkpad.jpg")
-products.add_product(10, "Laptops", "Asus ROG Zephyrus", 1499.99, "This high-end gaming laptop delivers unparalleled performance and cutting-edge specifications.", "images/asus_rog.jpg")
-products.add_product(11, "Appliances", "Refrigerator", 799.99, "Keep your food fresh and organized while minimizing environmental impact.", "images/fridge.jpg")
-products.add_product(12, "Appliances", "Washing Machine", 499.99, "Enjoy efficiency and advanced features for hassle-free cleaning.", "images/washing_machine.jpg")
-products.add_product(13, "Appliances", "Dishwasher", 349.99, "Experience hassle-free cleaning and enjoy more time for the things you love.", "images/dishwasher.jpg")
-products.add_product(14, "Appliances", "Microwave Oven", 129.99, "Perfect for quick and easy meals, it's a must-have in any modern kitchen.", "images/microwave.jpg")
-products.add_product(15, "Appliances", "Air Purifier", 199.99, "Enhance your home environment and prioritize your well-being with this essential appliance.", "images/air_purifier.jpg")
-    
+db_file = "products.db"
+products = Products(db_file)
 
 class WindowController:
     DEFAULT_WIDTH = 450
     DEFAULT_HEIGHT = 450
 
     def __init__(self, root, products, shopping_cart):
-        """
-        Initialize the WindowController class. Controls window navigation, opening and closing.
-
-        Args:
-            root: The root Tkinter window.
-            products (Products): An instance of the Products class containing product information.
-            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
-        """
         self.root = root
         self.products = products
         self.current_window = None
@@ -108,18 +95,9 @@ class WindowController:
     def center_y(self):
         return (self.root.winfo_screenheight() - self.DEFAULT_HEIGHT) // 2
 
-
 class ShoppingWindow(tk.Toplevel):
     def __init__(self, root, controller, products, shopping_cart):
-        """
-        Initialize the ShoppingWindow class.
 
-        Args:
-            root: The root Tkinter window.
-            controller (WindowController): The window controller for handling window navigation.
-            products (Products): An instance of the Products class containing product information.
-            shopping_cart (dict): The shopping cart dictionary to keep track of selected items.
-        """
         super().__init__(root)
         self.title("Shopping")
         self.controller = controller
@@ -193,43 +171,36 @@ class ShoppingWindow(tk.Toplevel):
             self.tree.insert("", "end", values=(product['name'], "${:.2f}".format(product['price'])))
 
     def on_search(self, *args):
-        """
-        Handle the search action triggered by the user.
-
-        Args:
-            *args: Additional arguments.
-        """
         selected_category = self.category_var.get()
         search_query = self.entry_search.get()
         self.update_list(selected_category, search_query)
-    
-    def add_to_cart(self):
-        """
-        Add the selected product to the shopping cart.
 
-        Retrieves the selected product from the list and updates the shopping cart accordingly.
-        """
+    def add_to_cart(self):
         selected_item = self.tree.focus()
         if selected_item:
             item_values = self.tree.item(selected_item, "values")
             product_name = item_values[0]
-            product_price = float(item_values[1][1:])
-            if product_name:
+            product_info = self.products.get_product_by_name(product_name)
+
+            if product_info:
+                product_id = list(self.products.products.keys())[list(self.products.products.values()).index(product_info)]
                 if product_name not in self.shopping_cart:
                     self.shopping_cart[product_name] = {
+                        'id': product_id,
                         'name': product_name,
-                        'price': product_price,
+                        'price': product_info['price'],
                         'quantity': 1
                     }
                 else:
                     self.shopping_cart[product_name]['quantity'] += 1
-    
+
+            self.update_listbox()
+
     def show_selected_item(self, event):
         """
         Display detailed information about the selected product.
-
         Args:
-            event: The event triggering the action (not used).
+        event: The event triggering the action (not used).
         """
         selected_item = self.tree.focus()
         if selected_item:
@@ -238,7 +209,7 @@ class ShoppingWindow(tk.Toplevel):
             product_info = self.products.get_product_by_name(product_name)
             description = product_info['description']
             image_path = product_info['image_path']
-            
+
             original_image = Image.open(image_path)
             original_width = original_image.size[0]
             new_size = (int(original_width), 150)
@@ -456,7 +427,6 @@ class ReceiptWindow(tk.Toplevel):
         tk.Label(self, text=receipt_text, justify=tk.LEFT).pack(padx=20, pady=20)
         ok_button = tk.Button(self, text="OK", command=self.controller.show_shopping_window)
         ok_button.pack(pady=10)
-
 
 root = tk.Tk()
 root.withdraw()
