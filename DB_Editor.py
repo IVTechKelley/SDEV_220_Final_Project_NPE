@@ -51,6 +51,9 @@ class DatabaseEditor:
         self.remove_button = tk.Button(self.button_frame, text="Remove Product", command=self.remove_product)
         self.remove_button.pack(side=tk.LEFT)
 
+        self.edit_button = tk.Button(self.button_frame, text="Edit Product", command=self.edit_product)
+        self.edit_button.pack(side=tk.LEFT)
+
     def initialize_database(self):
         if not os.path.exists(self.db_file):
             initialize_database(self.db_file)
@@ -89,6 +92,17 @@ class DatabaseEditor:
         conn.close()
 
         self.populate_tree()
+    
+    def edit_product(self):
+        selected_item = self.tree.selection()
+        if not selected_item:
+            messagebox.showerror("Error", "Please select a product to edit.")
+            return
+
+        product_id = self.tree.item(selected_item, "text")
+        product_details = self.tree.item(selected_item, "values")
+
+        EditProductWindow(self.root, self.db_file, product_id, product_details, self.populate_tree)
 
 class AddProductWindow:
     def __init__(self, root, db_file, callback):
@@ -153,6 +167,86 @@ class AddProductWindow:
         cursor = conn.cursor()
 
         cursor.execute("INSERT INTO products (name, description, price, image_path, category) VALUES (?, ?, ?, ?, ?)", (name, description, price, image_path, category))
+        conn.commit()
+
+        conn.close()
+
+        self.callback()
+        self.top.destroy()
+
+class EditProductWindow:
+    def __init__(self, root, db_file, product_id, product_details, callback):
+        self.root = root
+        self.db_file = db_file
+        self.product_id = product_id
+        self.product_details = product_details
+        self.callback = callback
+
+        self.top = tk.Toplevel(self.root)
+        self.top.title("Edit Product")
+
+        self.name_label = tk.Label(self.top, text="Name:")
+        self.name_label.grid(row=0, column=0)
+
+        self.name_entry = tk.Entry(self.top)
+        self.name_entry.insert(0, self.product_details[0])
+        self.name_entry.grid(row=0, column=1)
+
+        self.description_label = tk.Label(self.top, text="Description:")
+        self.description_label.grid(row=1, column=0)
+
+        self.description_entry = tk.Entry(self.top)
+        self.description_entry.insert(0, self.product_details[1])
+        self.description_entry.grid(row=1, column=1)
+
+        self.price_label = tk.Label(self.top, text="Price:")
+        self.price_label.grid(row=2, column=0)
+
+        self.price_entry = tk.Entry(self.top)
+        self.price_entry.insert(0, self.product_details[2])
+        self.price_entry.grid(row=2, column=1)
+
+        self.image_path_label = tk.Label(self.top, text="Image Path:")
+        self.image_path_label.grid(row=3, column=0)
+
+        self.image_path_entry = tk.Entry(self.top)
+        self.image_path_entry.insert(0, self.product_details[3])
+        self.image_path_entry.grid(row=3, column=1)
+
+        self.category_label = tk.Label(self.top, text="Category:")
+        self.category_label.grid(row=4, column=0)
+
+        self.category_entry = tk.Entry(self.top)
+        self.category_entry.insert(0, self.product_details[4])
+        self.category_entry.grid(row=4, column=1)
+
+        self.edit_button = tk.Button(self.top, text="Edit", command=self.edit_product)
+        self.edit_button.grid(row=5, columnspan=2)
+
+        self.cancel_button = tk.Button(self.top, text="Cancel", command=self.top.destroy)
+        self.cancel_button.grid(row=6, columnspan=2)
+
+    def edit_product(self):
+        name = self.name_entry.get()
+        description = self.description_entry.get()
+        price = self.price_entry.get()
+        image_path = self.image_path_entry.get()
+        category = self.category_entry.get()
+
+        if not name or not description or not price or not image_path or not category:
+            messagebox.showerror("Error", "Please fill in all fields.")
+            return
+
+        try:
+            price = float(price)
+        except ValueError:
+            messagebox.showerror("Error", "Price must be a valid number.")
+            return
+
+        conn = sqlite3.connect(self.db_file)
+        cursor = conn.cursor()
+
+        cursor.execute("UPDATE products SET name=?, description=?, price=?, image_path=?, category=? WHERE id=?", (name, description, price, image_path, category, self.product_id))
         conn.commit()
 
         conn.close()
