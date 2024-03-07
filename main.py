@@ -149,8 +149,8 @@ class ShoppingWindow(tk.Toplevel):
             filter_category_button = tk.Button(self.filter_frame, text=category, command=lambda cat=category: self.on_search(cat))
             filter_category_button.pack(side=tk.LEFT)
 
-        cart_button = tk.Button(self, text="Shopping Cart", command=self.controller.show_cart_window)
-        cart_button.pack(pady=10)
+        self.cart_button = tk.Button(self, text="Shopping Cart", command=self.controller.show_cart_window)
+        self.cart_button.pack(pady=10)
 
         self.on_search()
 
@@ -203,10 +203,19 @@ class ShoppingWindow(tk.Toplevel):
                         'price': product_info['price'],
                         'quantity': 1
                     }
+
+                    # Change the button text temporarily
+                    self.add_to_cart_button.config(text="Item Added")
+                    self.after(2000, lambda: self.add_to_cart_button.config(text="Add to Cart"))  # Change back after 2000 milliseconds
+
                 else:
                     self.shopping_cart[product_name]['quantity'] += 1
 
-            self.update_listbox()
+                    # Change the button text temporarily
+                    self.add_to_cart_button.config(text="Quantity Increased")
+                    self.after(2000, lambda: self.add_to_cart_button.config(text="Add to Cart"))  # Change back after 2000 milliseconds
+
+                self.update_listbox()
 
     def show_selected_item(self, event):
         """
@@ -237,6 +246,28 @@ class ShoppingWindow(tk.Toplevel):
                 print(f"Image file not found: {image_path}")
                 # Handle the missing image file gracefully, e.g., show a default image.
 
+    def update_listbox(self):
+        """
+        Update the displayed list of items in the shopping window.
+        This implementation clears the existing listbox and shows product names and prices.
+        You may need to adjust this based on your application's logic.
+        """
+        self.tree.delete(*self.tree.get_children())
+        selected_category = self.category_var.get()
+        search_query = self.entry_search.get()
+
+        if selected_category == "All":
+            products = list(self.products.products.values())
+        else:
+            products = self.products.get_products_by_category(selected_category)
+
+        if search_query:
+            products = [product for product in products if search_query.lower() in product['name'].lower()]
+
+        for product in products:
+            product_name = product['name']
+            product_price = "${:.2f}".format(product['price'])
+            self.tree.insert("", "end", values=(product_name, product_price))
 
 class CartWindow(tk.Toplevel):
     def __init__(self, root, controller, products, shopping_cart):
